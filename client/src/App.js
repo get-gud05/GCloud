@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { AuthProvider, AuthContext } from './context/AuthContext';
 
 function AppContent() {
@@ -6,7 +6,26 @@ function AppContent() {
   const [form, setForm] = useState('login');
   const [user, setUser] = useState('');
   const [pass, setPass] = useState('');
+  const [photos, setPhotos] = useState([]);
+  const [file, setFile] = useState(null);
 
+  useEffect(() => {
+    if (token) fetchPhotos();
+  }, [token]);
+
+  const fetchPhotos = async () => {
+    try {
+      const res = await fetch('http://localhost:5000/photos', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setPhotos(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Signup
   const handleSignup = async () => {
     try {
       const res = await fetch('http://localhost:5000/signup', {
@@ -22,6 +41,7 @@ function AppContent() {
     }
   };
 
+  // Login
   const handleLogin = async () => {
     try {
       const res = await fetch('http://localhost:5000/login', {
@@ -37,6 +57,27 @@ function AppContent() {
     }
   };
 
+  // Upload photo
+  const handleUpload = async () => {
+    if (!file) return alert('Select a file first');
+    const formData = new FormData();
+    formData.append('photo', file);
+
+    try {
+      const res = await fetch('http://localhost:5000/upload', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const data = await res.json();
+      setPhotos(prev => [...prev, data.url]);
+      setFile(null);
+    } catch (err) {
+      alert('Upload failed');
+      console.error(err);
+    }
+  };
+
   if (!token) {
     return (
       <div style={styles.container}>
@@ -46,23 +87,19 @@ function AppContent() {
             style={styles.input}
             placeholder="Username"
             value={user}
-            onChange={(e) => setUser(e.target.value)}
+            onChange={e => setUser(e.target.value)}
           />
           <input
             style={styles.input}
-            placeholder="Password"
             type="password"
+            placeholder="Password"
             value={pass}
-            onChange={(e) => setPass(e.target.value)}
+            onChange={e => setPass(e.target.value)}
           />
           {form === 'login' ? (
-            <button style={styles.button} onClick={handleLogin}>
-              Login
-            </button>
+            <button style={styles.button} onClick={handleLogin}>Login</button>
           ) : (
-            <button style={styles.button} onClick={handleSignup}>
-              Sign Up
-            </button>
+            <button style={styles.button} onClick={handleSignup}>Sign Up</button>
           )}
           <p
             style={styles.toggle}
@@ -79,9 +116,22 @@ function AppContent() {
     <div style={styles.container}>
       <div style={styles.card}>
         <h2 style={styles.heading}>Welcome, {username}!</h2>
-        <button style={styles.button} onClick={logout}>
-          Logout
-        </button>
+        <button style={styles.button} onClick={logout}>Logout</button>
+        <hr />
+        <h3>Upload Photo</h3>
+        <input type="file" onChange={e => setFile(e.target.files[0])} />
+        <button style={styles.button} onClick={handleUpload}>Upload</button>
+        <h3>Your Photos</h3>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+          {photos.map((p, i) => (
+            <img
+              key={i}
+              src={`http://localhost:5000${p}`}
+              alt="user"
+              style={{ width: '100px', height: '100px', objectFit: 'cover', borderRadius: '8px' }}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -93,7 +143,7 @@ const styles = {
     height: '100vh',
     justifyContent: 'center',
     alignItems: 'center',
-    background: 'linear-gradient(135deg, #667eea, #764ba2)',
+    background: 'linear-gradient(135deg,#667eea,#764ba2)',
     fontFamily: 'Arial, sans-serif',
   },
   card: {
@@ -101,7 +151,7 @@ const styles = {
     padding: '40px 30px',
     borderRadius: '12px',
     boxShadow: '0 8px 20px rgba(0,0,0,0.2)',
-    minWidth: '300px',
+    minWidth: '350px',
     textAlign: 'center',
   },
   heading: {
@@ -134,11 +184,6 @@ const styles = {
     cursor: 'pointer',
     fontSize: '14px',
   },
-};
-
-// Add hover effect for button
-styles.button[':hover'] = {
-  backgroundColor: '#5563c1',
 };
 
 export default function App() {
